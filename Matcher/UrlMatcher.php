@@ -140,19 +140,7 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
                 continue;
             }
 
-            // check HTTP method requirement
-            if ($req = $route->getRequirement('_method')) {
-                // HEAD and GET are equivalent as per RFC
-                if ('HEAD' === $method = $this->context->getMethod()) {
-                    $method = 'GET';
-                }
-
-                if (!in_array($method, $req = explode('|', strtoupper($req)))) {
-                    $this->allow = array_merge($this->allow, $req);
-
-                    continue;
-                }
-            }
+            
 
             $status = $this->handleRouteRequirements($pathinfo, $name, $route);
 
@@ -199,6 +187,20 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
      */
     protected function handleRouteRequirements($pathinfo, $name, Route $route)
     {
+        // check HTTP method requirement
+        if ($req = $route->getRequirement('_method')) {
+            // HEAD and GET are equivalent as per RFC
+            if ('HEAD' === $method = $this->context->getMethod()) {
+                $method = 'GET';
+            }
+
+            if (!in_array($method, $req = explode('|', strtoupper($req)))) {
+                $this->allow = array_merge($this->allow, $req);
+
+                return array(self::REQUIREMENT_MISMATCH, null);
+            }
+        }
+            
         // expression condition
         if ($route->getCondition() && !$this->getExpressionLanguage()->evaluate($route->getCondition(), array('context' => $this->context, 'request' => $this->request))) {
             return array(self::REQUIREMENT_MISMATCH, null);
