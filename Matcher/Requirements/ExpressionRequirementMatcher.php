@@ -21,8 +21,8 @@ class ExpressionRequirementMatcher  implements RequirementMatcherInterface {
 		$this->request = $request;
 	}
 
-	// TODO: Initialize this somewhere instead of lazy
-	protected function getExpressionLanguage()
+	//TODO: Build/load somewhere else... Mixing reflection with the logic is... sucky
+	protected function buildExpressionEvaluator()
     {
         if (null === $this->expressionLanguage) {
             if (!class_exists('Symfony\Component\ExpressionLanguage\ExpressionLanguage')) {
@@ -44,12 +44,13 @@ class ExpressionRequirementMatcher  implements RequirementMatcherInterface {
 				'request' => $context->getRequest()
 			);
 			
-			$evaluationResult 	= $this->getExpressionLanguage()->evaluate(
+			 $expression = $this->buildExpressionEvaluator();
+			 $result = $expression->evaluate(
 				$route->getCondition(), 
 				$variables
 			);
 			
-			if (!$evaluationResult) {
+			if (!$result) {
             	return new RequirementMismatchesResponse();
 			}
         }
