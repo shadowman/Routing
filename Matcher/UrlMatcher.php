@@ -211,18 +211,18 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
         $requirementContext->setRequestContext($this->context);
         $requirementContext->setRequest($this->request);
         
-        // Condition
-        $matcher = new ExpressionRequirementMatcher();
-        $result  = $matcher->match($requirementContext);
-        if (!$result->matches()) {
-            return array(self::REQUIREMENT_MISMATCH, null);
-        }      
+        $matchers = array(
+            // Condition
+            new ExpressionRequirementMatcher(), 
+            // Schema
+            new SchemaRequirementMatcher()
+        );
 
-        // Schema
-        $matcher = new SchemaRequirementMatcher();
-        $result  = $matcher->match($requirementContext);
-        if (!$result->matches()) {
-            return array(self::REQUIREMENT_MISMATCH, null);
+        foreach ($matchers as $matcher) {
+            $result  = $matcher->match($requirementContext);
+            if (!$result->matches()) {
+                return array(self::REQUIREMENT_MISMATCH, null);
+            }    
         }
 
         return array(self::REQUIREMENT_MATCH, null);
