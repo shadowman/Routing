@@ -16,6 +16,8 @@ use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\Matcher\Requirements\SchemaRequirementMatcher;
+
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 
@@ -206,9 +208,9 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
             return array(self::REQUIREMENT_MISMATCH, null);
         }
 
-        // check HTTP scheme requirement
-        $scheme = $route->getRequirement('_scheme');
-        if ($scheme && $scheme !== $this->context->getScheme()) {
+        $matcher = new SchemaRequirementMatcher($this->context);
+        $result  = $matcher->match($pathinfo, $name, $route);
+        if (!$result->matches()) {
             return array(self::REQUIREMENT_MISMATCH, null);
         }
 
