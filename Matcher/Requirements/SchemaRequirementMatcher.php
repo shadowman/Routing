@@ -5,17 +5,23 @@ namespace Symfony\Component\Routing\Matcher\Requirements;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse;
+use Symfony\Component\Routing\Matcher\Requirements\RequirementMismatchesResponse;
+use Symfony\Component\Routing\Matcher\Requirements\RequirementMatcherInterface;
 
-class SchemaRequirementMatcher {
+class SchemaRequirementMatcher implements RequirementMatcherInterface {
+	
 	protected $context;
 
 	public function __construct(RequestContext $context = NULL) {
 		$this->context = $context;
 	}
 	
-	public function match($pathinfo, $name, Route $route, RequestContext $context = NULL) {
+	public function match(RequirementContext $context) {
+		$route 				= $context->getRoute();
 		$scheme  			= $route->getRequirement('_scheme');
-		$selectedContext 	= $this->chooseContext($context);
+		$selectedContext 	= $this->chooseContext(
+			$context->getRequestContext()
+		);
         if ($scheme && $scheme !== $selectedContext->getScheme()) {
             return new RequirementMismatchesResponse();
         }
@@ -27,8 +33,8 @@ class SchemaRequirementMatcher {
 			return $context;
 		} else {
 			if ($this->context === NULL) {
-				//TODO: Replace with propper exception
-				throw new Exception(); 
+				//TODO: Replace with proper exception
+				throw new \Exception(); 
 			}
 			return $this->context;
 		}

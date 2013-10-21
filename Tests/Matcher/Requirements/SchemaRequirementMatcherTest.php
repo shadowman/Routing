@@ -15,6 +15,7 @@ use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Matcher\Requirements\RequirementContext;
 
 use Symfony\Component\Routing\Matcher\Requirements\SchemaRequirementMatcher;
 
@@ -31,6 +32,19 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
 		$this->matcher = new SchemaRequirementMatcher();
 	}
 
+    private function createRequirementContextForRoute($route) {
+        return $this->createRequirementContext(self::TEST_ROUTE_PATH, self::TEST_ROUTE_NAME, $route, $this->context);
+    }
+
+    private function createRequirementContext($path, $name, $route, $context) {
+        $reqContext =  new RequirementContext();
+        $reqContext->setPath($path);
+        $reqContext->setRouteName($name);
+        $reqContext->setRoute($route);
+        $reqContext->setRequestContext($context);
+        return $reqContext;
+    }
+
 	/**
 	* @test
 	*/
@@ -41,10 +55,12 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
     	$route 			= new Route(self::TEST_ROUTE_PATH, array(), array('_scheme' => 'https'));
 		
 		$response = $this->matcher->match(
-    		self::TEST_ROUTE_PATH,
-    		self::TEST_ROUTE_NAME, 
-    		$route,
-    		$httpsContext
+            $this->createRequirementContext(
+        		self::TEST_ROUTE_PATH,
+        		self::TEST_ROUTE_NAME, 
+        		$route,
+        		$httpsContext
+            )
     	);
 
 		$this->assertInstanceOf(
@@ -61,9 +77,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
     	$route = new Route(self::TEST_ROUTE_PATH, array(), array('_scheme' => 'http'));
 		
 		$response = $this->matcher->match(
-    		self::TEST_ROUTE_PATH,
-    		self::TEST_ROUTE_NAME, 
-    		$route
+    		$this->createRequirementContextForRoute($route)
     	);
 
 		$this->assertInstanceOf(
@@ -80,10 +94,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
     	$route = new Route(self::TEST_ROUTE_PATH, array(), array('_scheme' => 'http'));
 
     	$response = $this->matcher->match(
-    		self::TEST_ROUTE_PATH,
-    		self::TEST_ROUTE_NAME, 
-    		$route, 
-    		$this->context
+            $this->createRequirementContextForRoute($route)
     	);
 
     	$this->assertInstanceOf(
@@ -99,10 +110,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
     	$route = new Route(self::TEST_ROUTE_PATH, array(), array());
 
     	$response = $this->matcher->match(
-    		self::TEST_ROUTE_PATH,
-    		self::TEST_ROUTE_NAME, 
-    		$route, 
-    		$this->context
+            $this->createRequirementContextForRoute($route)
     	);
     	
     	$this->assertInstanceOf(
@@ -118,10 +126,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
     	$route = new Route(self::TEST_ROUTE_PATH, array(), array('_scheme' => 'https'));
 
     	$response = $this->matcher->match(
-    		self::TEST_ROUTE_PATH,
-    		self::TEST_ROUTE_NAME, 
-    		$route, 
-    		$this->context
+            $this->createRequirementContextForRoute($route)
     	);
     	
     	$this->assertInstanceOf(
