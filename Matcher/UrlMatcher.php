@@ -15,6 +15,15 @@ use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Matcher\Requirements\SchemaRequirementMatcher;
+use Symfony\Component\Routing\Matcher\Requirements\ExpressionRequirementMatcher;
+use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\OkValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\ValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\RequirementContext;
+use Symfony\Component\Routing\Matcher\Requirements\RouteValidationResult;
+
+
 use Symfony\Component\Routing\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
@@ -85,15 +94,10 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
      */
     public function match($pathinfo)
     {
-        $this->allow = array();
-
-        if ($ret = $this->matchCollection(rawurldecode($pathinfo), $this->routes)) {
-            return $ret;
-        }
-
-        throw 0 < count($this->allow)
-            ? new MethodNotAllowedException(array_unique(array_map('strtoupper', $this->allow)))
-            : new ResourceNotFoundException();
+        return $this->matchCollection(
+            rawurldecode($pathinfo), 
+            $this->routes
+        );
     }
 
     /**
@@ -123,37 +127,103 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
      */
     protected function matchCollection($pathinfo, RouteCollection $routes)
     {
+        $this->allow = array();
+        
         foreach ($routes as $name => $route) {
-            $compiledRoute = $route->compile();
-
-            // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
-            if ('' !== $compiledRoute->getStaticPrefix() && 0 !== strpos($pathinfo, $compiledRoute->getStaticPrefix())) {
-                continue;
-            }
-
-            if (!preg_match($compiledRoute->getRegex(), $pathinfo, $matches)) {
-                continue;
-            }
-
-            $hostMatches = array();
-            if ($compiledRoute->getHostRegex() && !preg_match($compiledRoute->getHostRegex(), $this->context->getHost(), $hostMatches)) {
-                continue;
-            }
-
             
+            $result = $this->matchRoute($pathinfo, $name, $route);
+            if ($result->isValid()) {
+                $compiledRoute = $route->compile();
 
-            $status = $this->handleRouteRequirements($pathinfo, $name, $route);
+                // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
+                if ('' !== $compiledRoute->getStaticPrefix() && 0 !== strpos($pathinfo, $compiledRoute->getStaticPrefix())) {
+                    continue;
+                }
 
-            if (self::ROUTE_MATCH === $status[0]) {
-                return $status[1];
+                if (!preg_match($compiledRoute->getRegex(), $pathinfo, $matches)) {
+                    continue;
+                }
+
+                $hostMatches = array();
+                if ($compiledRoute->getHostRegex() && !preg_match($compiledRoute->getHostRegex(), $this->context->getHost(), $hostMatches)) {
+                    continue;
+                }
+
+                
+
+                $status = $this->handleRouteRequirements($pathinfo, $name, $route);
+
+                if (self::ROUTE_MATCH === $status[0]) {
+                    return $status[1];
+                }
+
+                if (self::REQUIREMENT_MISMATCH === $status[0]) {
+                    continue;
+                }
+
+                return $this->getAttributes($route, $name, array_replace($matches, $hostMatches));
             }
-
-            if (self::REQUIREMENT_MISMATCH === $status[0]) {
-                continue;
-            }
-
-            return $this->getAttributes($route, $name, array_replace($matches, $hostMatches));
         }
+
+        throw 0 < count($this->allow)
+            ? new MethodNotAllowedException(array_unique(array_map('strtoupper', $this->allow)))
+            : new ResourceNotFoundException();
+    }
+
+    private function regExpMatching($pathinfo, Route $route) {
+        $compiledRoute = $route->compile();
+
+        // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
+        if ('' !== $compiledRoute->getStaticPrefix() && 0 !== strpos($pathinfo, $compiledRoute->getStaticPrefix())) {
+            return new KoValidationResult();
+        }
+
+        if (!preg_match($compiledRoute->getRegex(), $pathinfo, $matches)) {
+            return new KoValidationResult();
+        }
+
+        $hostMatches = array();
+        if ($compiledRoute->getHostRegex() && !preg_match($compiledRoute->getHostRegex(), $this->context->getHost(), $hostMatches)) {
+            return new KoValidationResult();
+        }
+        return new OkValidationResult();
+    }
+
+    private function matchRoute($path, $routeName, Route $route) {
+        $results    = array();
+        // RegExp stuff ... refactor to route validation matcher
+        $result     = $this->regExpMatching($path, $route);
+        $results[]  = $result;
+        if (!$result->isValid()) {
+            return new RouteValidationResult(ValidationResult::KO, $route, $results);
+        }
+
+        // Requirements stuff
+        $validators = array( 
+            new SchemaRequirementMatcher(),
+            new ExpressionRequirementMatcher() 
+        );
+
+        foreach ($validators as $validator) {
+            $context    = $this->buildRequirementContext($path, $routeName, $route);
+            $result     = $validator->match($context);
+            $results[]  = $result;
+            if (!$result->isValid()) {
+                return new RouteValidationResult(ValidationResult::KO, $route, $results);
+            }
+        }
+        
+        return new RouteValidationResult(ValidationResult::OK, $route, $results);
+    }
+
+    private function buildRequirementContext($path, $routeName, Route $route) {
+        $context = new RequirementContext();
+        $context->setRoute($route);
+        $context->setRouteName($routeName);
+        $context->setRequestContext($this->context);
+        $context->setPath($path);
+        $context->setRequest($this->request);
+        return $context;
     }
 
     /**

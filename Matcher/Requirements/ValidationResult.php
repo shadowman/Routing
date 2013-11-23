@@ -9,9 +9,9 @@ abstract class ValidationResult {
 	protected $results;
 	protected $isValid;
 
-	public function __construct($isValid) {
+	public function __construct($isValid, $results = array()) {
 		$this->isValid = $isValid;
-		$this->results = array();
+		$this->results = $results;
 	}
 
 	public function isValid() {

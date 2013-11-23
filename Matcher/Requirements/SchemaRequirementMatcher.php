@@ -4,8 +4,8 @@ namespace Symfony\Component\Routing\Matcher\Requirements;
 
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RequestContext;
-use Symfony\Component\Routing\Matcher\Requirements\InvalidValidationResult;
-use Symfony\Component\Routing\Matcher\Requirements\ValidValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\OkValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\RequirementMatcherInterface;
 
 class SchemaRequirementMatcher implements RequirementMatcherInterface {
@@ -23,9 +23,9 @@ class SchemaRequirementMatcher implements RequirementMatcherInterface {
 			$context->getRequestContext()
 		);
         if ($scheme && $scheme !== $selectedContext->getScheme()) {
-            return new InvalidValidationResult();
+            return new KoValidationResult();
         }
-		return new ValidValidationResult();
+		return new OkValidationResult();
 	}
 
 	protected function chooseContext(RequestContext $context = NULL) {
