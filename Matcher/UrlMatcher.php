@@ -19,6 +19,7 @@ use Symfony\Component\Routing\Matcher\Requirements\SchemaRequirementMatcher;
 use Symfony\Component\Routing\Matcher\Requirements\ExpressionRequirementMatcher;
 use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\OkValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\HostValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\ValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\RequirementContext;
 use Symfony\Component\Routing\Matcher\Requirements\RouteValidationResult;
@@ -189,10 +190,9 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
     private function hostCheck($pathinfo, $compiledRoute) {
         $hostMatches = array();
         if ($compiledRoute->getHostRegex() && !preg_match($compiledRoute->getHostRegex(), $this->context->getHost(), $hostMatches)) {
-            return new KoValidationResult();
+            return new HostValidationResult(ValidationResult::KO);
         }
-        // TODO: Add here the host matches
-        return new OkValidationResult();        
+        return new HostValidationResult(ValidationResult::OK, $hostMatches);        
     }
 
     private function regExpMatching($pathinfo, Route $route) {
