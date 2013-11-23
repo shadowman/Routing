@@ -2,7 +2,7 @@
 
 namespace Symfony\Component\Routing\Matcher\Requirements;
 
-abstract class ValidationResult {
+class ValidationResult {
 	const OK = true;
 	const KO = false;
 

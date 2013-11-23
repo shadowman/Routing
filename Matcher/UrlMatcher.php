@@ -170,23 +170,48 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
             : new ResourceNotFoundException();
     }
 
-    private function regExpMatching($pathinfo, Route $route) {
-        $compiledRoute = $route->compile();
-
+    private function staticPrefixCheck($pathinfo, $compiledRoute) {
         // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
         if ('' !== $compiledRoute->getStaticPrefix() && 0 !== strpos($pathinfo, $compiledRoute->getStaticPrefix())) {
             return new KoValidationResult();
         }
+        return new OkValidationResult();
+    }
 
+    private function pregCheck($pathinfo, $compiledRoute) {
         if (!preg_match($compiledRoute->getRegex(), $pathinfo, $matches)) {
             return new KoValidationResult();
         }
+        // TODO: Add here the matches
+        return new OkValidationResult();
+    }
 
+    private function hostCheck($pathinfo, $compiledRoute) {
         $hostMatches = array();
         if ($compiledRoute->getHostRegex() && !preg_match($compiledRoute->getHostRegex(), $this->context->getHost(), $hostMatches)) {
             return new KoValidationResult();
         }
-        return new OkValidationResult();
+        // TODO: Add here the host matches
+        return new OkValidationResult();        
+    }
+
+    private function regExpMatching($pathinfo, Route $route) {
+        $results = array();
+        $compiledRoute = $route->compile();
+
+        // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
+        $results[] = $this->staticPrefixCheck($pathinfo, $compiledRoute);
+
+        $results[] = $this->pregCheck($pathinfo, $compiledRoute);
+        
+        $results[] = $this->hostCheck($pathinfo, $compiledRoute);
+
+        foreach ($results as $result) {
+            if (!$result->isValid()) {
+                new KoValidationResult($results);
+            }
+        }
+        return new OkValidationResult($results);
     }
 
     private function matchRoute($path, $routeName, Route $route) {
