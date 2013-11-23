@@ -17,12 +17,13 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Matcher\Requirements\SchemaRequirementMatcher;
 use Symfony\Component\Routing\Matcher\Requirements\ExpressionRequirementMatcher;
-use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\MethodRequirementMatcher;
+use Symfony\Component\Routing\Matcher\Requirements\RequirementContext;
+use Symfony\Component\Routing\Matcher\Requirements\ValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\OkValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\HostValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\RegExpValidationResult;
-use Symfony\Component\Routing\Matcher\Requirements\ValidationResult;
-use Symfony\Component\Routing\Matcher\Requirements\RequirementContext;
 use Symfony\Component\Routing\Matcher\Requirements\RouteValidationResult;
 
 
@@ -195,49 +196,36 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
         return new HostValidationResult(ValidationResult::OK, $hostMatches);        
     }
 
-    private function regExpMatching($pathinfo, Route $route) {
-        $results = array();
-        $compiledRoute = $route->compile();
-
-        // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
-        $results[] = $this->staticPrefixCheck($pathinfo, $compiledRoute);
-
-        $results[] = $this->pregCheck($pathinfo, $compiledRoute);
-        
-        $results[] = $this->hostCheck($pathinfo, $compiledRoute);
-
-        foreach ($results as $result) {
-            if (!$result->isValid()) {
-                new KoValidationResult($results);
-            }
-        }
-        return new OkValidationResult($results);
-    }
-
     private function matchRoute($path, $routeName, Route $route) {
         $results    = array();
         // RegExp stuff ... refactor to route validation matcher
-        $result     = $this->regExpMatching($path, $route);
-        $results[]  = $result;
-        if (!$result->isValid()) {
-            return new RouteValidationResult(ValidationResult::KO, $route, $results);
-        }
+        $compiledRoute = $route->compile();
+
+        // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
+        $results[] = $this->staticPrefixCheck($path, $compiledRoute);
+
+        $results[] = $this->pregCheck($path, $compiledRoute);
+        
+        $results[] = $this->hostCheck($path, $compiledRoute);
 
         // Requirements stuff
         $validators = array( 
             new SchemaRequirementMatcher(),
-            new ExpressionRequirementMatcher() 
+            new ExpressionRequirementMatcher(),
+            new MethodRequirementMatcher()
         );
 
         foreach ($validators as $validator) {
             $context    = $this->buildRequirementContext($path, $routeName, $route);
             $result     = $validator->match($context);
-            $results[]  = $result;
+            $results[]  = $result;    
+        }
+
+        foreach ($results as $result) {
             if (!$result->isValid()) {
                 return new RouteValidationResult(ValidationResult::KO, $route, $results);
             }
         }
-        
         return new RouteValidationResult(ValidationResult::OK, $route, $results);
     }
 
