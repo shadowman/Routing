@@ -63,10 +63,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
             )
     	);
 
-		$this->assertInstanceOf(
-    		'Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse', 
-    		$response
-    	);
+        $this->assertTrue($response->isValid());
     }
 
     /**
@@ -79,11 +76,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
 		$response = $this->matcher->match(
     		$this->createRequirementContextForRoute($route)
     	);
-
-		$this->assertInstanceOf(
-    		'Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse', 
-    		$response
-    	);
+        $this->assertTrue($response->isValid());
     }
 
 
@@ -97,10 +90,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
             $this->createRequirementContextForRoute($route)
     	);
 
-    	$this->assertInstanceOf(
-    		'Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse', 
-    		$response
-    	);
+        $this->assertTrue($response->isValid());
     }
 	
 	/**
@@ -112,11 +102,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
     	$response = $this->matcher->match(
             $this->createRequirementContextForRoute($route)
     	);
-    	
-    	$this->assertInstanceOf(
-    		'Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse', 
-    		$response
-    	);
+        $this->assertTrue($response->isValid());
     }
 	
 	/**
@@ -128,10 +114,7 @@ class SchemaRequirementMatcherTest extends \PHPUnit_Framework_TestCase
     	$response = $this->matcher->match(
             $this->createRequirementContextForRoute($route)
     	);
-    	
-    	$this->assertInstanceOf(
-    		'Symfony\Component\Routing\Matcher\Requirements\RequirementMismatchesResponse', 
-    		$response
-    	);
+
+        $this->assertFalse($response->isValid());
     }
 }

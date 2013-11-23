@@ -5,8 +5,8 @@ namespace Symfony\Component\Routing\Matcher\Requirements;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Matcher\Requirements\RequirementMatcherInterface;
-use Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse;
-use Symfony\Component\Routing\Matcher\Requirements\RequirementMismatchesResponse;
+use Symfony\Component\Routing\Matcher\Requirements\InvalidValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\ValidValidationResult;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
@@ -51,11 +51,11 @@ class ExpressionRequirementMatcher  implements RequirementMatcherInterface {
 			);
 			
 			if (!$result) {
-            	return new RequirementMismatchesResponse();
+            	return new InvalidValidationResult();
 			}
         }
 
-		return new RequirementMatchesResponse();
+		return new ValidValidationResult();
 	}
 
 

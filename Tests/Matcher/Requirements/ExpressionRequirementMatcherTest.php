@@ -54,10 +54,7 @@ class ExpressionRequirementMatcherTest extends \PHPUnit_Framework_TestCase {
 		
 		$response = $this->matcher->match($context);
 		
-		$this->assertInstanceOf(
-			'Symfony\Component\Routing\Matcher\Requirements\RequirementMismatchesResponse', 
-			$response
-		);
+		$this->assertFalse($response->isValid());
 	}
 	
 	/**
@@ -71,10 +68,7 @@ class ExpressionRequirementMatcherTest extends \PHPUnit_Framework_TestCase {
 
 		$response = $this->matcher->match($context);
 		
-		$this->assertInstanceOf(
-			'Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse', 
-			$response
-		);
+		$this->assertTrue($response->isValid());
 	}
 
 	/**
@@ -87,11 +81,8 @@ class ExpressionRequirementMatcherTest extends \PHPUnit_Framework_TestCase {
         $context = $this->createRequirementContextForRoute($route);
 
 		$response = $this->matcher->match($context);
-		
-		$this->assertInstanceOf(
-			'Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse', 
-			$response
-		);
+
+		$this->assertTrue($response->isValid());
 	}
 
 	/**
@@ -103,10 +94,7 @@ class ExpressionRequirementMatcherTest extends \PHPUnit_Framework_TestCase {
 
 		$response = $this->matcher->match($context);
 		
-		$this->assertInstanceOf(
-			'Symfony\Component\Routing\Matcher\Requirements\RequirementMatchesResponse', 
-			$response
-		);
+		$this->assertTrue($response->isValid());
 	}
 
 }

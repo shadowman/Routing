@@ -16,10 +16,6 @@ use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
-use Symfony\Component\Routing\Matcher\Requirements\RequirementContext;
-use Symfony\Component\Routing\Matcher\Requirements\SchemaRequirementMatcher;
-use Symfony\Component\Routing\Matcher\Requirements\ExpressionRequirementMatcher;
-
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 
@@ -205,24 +201,15 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
             }
         }
             
+        // expression condition
+        if ($route->getCondition() && !$this->getExpressionLanguage()->evaluate($route->getCondition(), array('context' => $this->context, 'request' => $this->request))) {
+            return array(self::REQUIREMENT_MISMATCH, null);
+        }
 
-        $requirementContext = new RequirementContext();
-        $requirementContext->setRoute($route);
-        $requirementContext->setRequestContext($this->context);
-        $requirementContext->setRequest($this->request);
-        
-        $matchers = array(
-            // Condition
-            new ExpressionRequirementMatcher(), 
-            // Schema
-            new SchemaRequirementMatcher()
-        );
-
-        foreach ($matchers as $matcher) {
-            $result  = $matcher->match($requirementContext);
-            if (!$result->matches()) {
-                return array(self::REQUIREMENT_MISMATCH, null);
-            }    
+        // check HTTP scheme requirement
+        $scheme = $route->getRequirement('_scheme');
+        if ($scheme && $scheme !== $this->context->getScheme()) {
+            return array(self::REQUIREMENT_MISMATCH, null);
         }
 
         return array(self::REQUIREMENT_MATCH, null);
