@@ -20,6 +20,7 @@ use Symfony\Component\Routing\Matcher\Requirements\ExpressionRequirementMatcher;
 use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\OkValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\HostValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\RegExpValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\ValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\RequirementContext;
 use Symfony\Component\Routing\Matcher\Requirements\RouteValidationResult;
