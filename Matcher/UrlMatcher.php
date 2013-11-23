@@ -181,10 +181,9 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
 
     private function pregCheck($pathinfo, $compiledRoute) {
         if (!preg_match($compiledRoute->getRegex(), $pathinfo, $matches)) {
-            return new KoValidationResult();
+            return new RegExpValidationResult(ValidationResult::KO, $matches);
         }
-        // TODO: Add here the matches
-        return new OkValidationResult();
+        return new RegExpValidationResult(ValidationResult::OK, $matches);
     }
 
     private function hostCheck($pathinfo, $compiledRoute) {
