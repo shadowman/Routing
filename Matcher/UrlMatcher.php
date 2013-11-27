@@ -43,19 +43,10 @@ use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
  */
 class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
 {
-    const REQUIREMENT_MATCH     = 0;
-    const REQUIREMENT_MISMATCH  = 1;
-    const ROUTE_MATCH           = 2;
-
     /**
      * @var RequestContext
      */
     protected $context;
-
-    /**
-     * @var array
-     */
-    protected $allow = array();
 
     /**
      * @var RouteCollection
@@ -63,7 +54,8 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
     protected $routes;
 
     protected $request;
-    protected $expressionLanguage;
+    
+    protected $matchers;
 
     /**
      * Constructor.
@@ -77,6 +69,14 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
     {
         $this->routes = $routes;
         $this->context = $context;
+        // Matchers
+        $this->matchers = array( 
+            new RegExpRequirementMatcher(),
+            new HostRequirementMatcher(),
+            new SchemaRequirementMatcher(),
+            new ExpressionRequirementMatcher(),
+            new MethodRequirementMatcher()
+        );
     }
 
     /**
@@ -223,16 +223,7 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
     private function matchRoute($path, $routeName, Route $route) {
         $matchersResults    = array();
      
-        // Matchers
-        $matchers = array( 
-            new RegExpRequirementMatcher(),
-            new HostRequirementMatcher(),
-            new SchemaRequirementMatcher(),
-            new ExpressionRequirementMatcher(),
-            new MethodRequirementMatcher()
-        );
-
-        foreach ($matchers as $matcher) {
+        foreach ($this->matchers as $matcher) {
             $context    = $this->buildRequirementContext(
                 $path, 
                 $routeName, 
