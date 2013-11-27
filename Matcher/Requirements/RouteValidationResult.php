@@ -4,8 +4,20 @@ namespace Symfony\Component\Routing\Matcher\Requirements;
 // TODO: Rename this to SuccessValidationResult
 
 class RouteValidationResult extends ValidationResult {
-	public function __construct($isValid, $route, $results) {
-		parent::__construct(ValidationResult::OK, $results);
+	protected $route;
+	protected $attributes = array();
+
+	public function __construct($isValid, $routeName, $route, $results = NULL) {
+		parent::__construct($isValid, $results);
 		$this->route = $route;
+		$this->routeName = $routeName;
+	}
+
+	public function getRoute() {
+		return $this->route;
+	}
+
+	public function getRouteName() {
+		return $this->routeName;
 	}
 }

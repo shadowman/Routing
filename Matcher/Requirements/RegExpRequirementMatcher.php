@@ -17,29 +17,16 @@ class RegExpRequirementMatcher  implements RequirementMatcherInterface {
         $route               = $context->getRoute();
         $path                = $context->getPath();
         $compiledRoute       = $route->compile();
-        $results[]           = $this->staticPrefixCheck($path, $compiledRoute);
-        $results[]           = $this->pregCheck($path, $compiledRoute);
-        $validationResult    = $this->resolveValidationBasedOnCheckResults($results);
+        $validationResult    = $this->pregCheck($path, $compiledRoute);
         return $validationResult;
     }
 
-    private function resolveValidationBasedOnCheckResults(array $results) {
-        $validationResult    = new RegExpValidationResult(ValidationResult::KO, $results);
-        if ($results[0]->isValid() && $results[1]->isValid()) {
-            $validationResult    = new RegExpValidationResult(ValidationResult::OK, $results);
-        }
-        return $validationResult;
-    }
-
-    private function staticPrefixCheck($pathinfo, $compiledRoute) {
+    private function pregCheck($pathinfo, $compiledRoute) {
         // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
         if ('' !== $compiledRoute->getStaticPrefix() && 0 !== strpos($pathinfo, $compiledRoute->getStaticPrefix())) {
             return new RegExpValidationResult(ValidationResult::KO);
         }
-        return new RegExpValidationResult(ValidationResult::OK);
-    }
 
-    private function pregCheck($pathinfo, $compiledRoute) {
         if (!preg_match($compiledRoute->getRegex(), $pathinfo, $matches)) {
             return new RegExpValidationResult(ValidationResult::KO, $matches);
         }

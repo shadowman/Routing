@@ -19,7 +19,7 @@ class ValidationResult {
 	}
 	
 	public function getInnerValidationResults() {
-		$this->results;
+		return $this->results;
 	}
 
 	protected function setInnerValidationResults($results) {

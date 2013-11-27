@@ -27,6 +27,7 @@ use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\HostValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\RegExpValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\RouteValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\HttpMethodValidationResult;
 
 
 use Symfony\Component\Routing\Route;
@@ -132,51 +133,98 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
      */
     protected function matchCollection($pathinfo, RouteCollection $routes)
     {
-        $this->allow = array();
+        $allResults = array();
         
         foreach ($routes as $name => $route) {
-            $result = $this->matchRoute($pathinfo, $name, $route);
-            if ($result->isValid()) {
-                $compiledRoute = $route->compile();
-
-                // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
-                if ('' !== $compiledRoute->getStaticPrefix() && 0 !== strpos($pathinfo, $compiledRoute->getStaticPrefix())) {
-                    continue;
-                }
-
-                if (!preg_match($compiledRoute->getRegex(), $pathinfo, $matches)) {
-                    continue;
-                }
-
-                $hostMatches = array();
-                if ($compiledRoute->getHostRegex() && !preg_match($compiledRoute->getHostRegex(), $this->context->getHost(), $hostMatches)) {
-                    continue;
-                }
-
-                $status = $this->handleRouteRequirements($pathinfo, $name, $route);
-
-                if (self::ROUTE_MATCH === $status[0]) {
-                    return $status[1];
-                }
-
-                if (self::REQUIREMENT_MISMATCH === $status[0]) {
-                    continue;
-                }
-                
-                return $this->getAttributes($route, $name, array_replace($matches, $hostMatches));
+            $routeResult = $this->matchRoute($pathinfo, $name, $route);
+            $allResults[] = $routeResult;
+            if ($routeResult->isValid()) {
+                break;    
             }
         }
 
-        throw 0 < count($this->allow)
-            ? new MethodNotAllowedException(array_unique(array_map('strtoupper', $this->allow)))
-            : new ResourceNotFoundException();
+        $matchingRouteAttributes = $this->extractRouteAttributesFromResults(
+            $allResults
+        );
+
+        return $matchingRouteAttributes;
+    }
+    
+    private function extractRouteAttributesFromResults(array $allRoutesResults) {
+        $attributes         = array();
+        $values             = array_values($allRoutesResults);
+        $lastRouteResult    = end($values);
+        if ($lastRouteResult->isValid()) {
+            $attributes = $this->buildMatchingRouteAttributes($lastRouteResult);
+        } else {
+            // TODO: There should be handlers to deal with validation of global results
+            $this->throwExceptionsIfNeeded($allRoutesResults);
+        }
+        return $attributes;
+    }
+
+    private function throwExceptionsIfNeeded(array $allRoutesResults) {
+        $allowed = $this->findAllowedMethodsInFailingMethodChecks($allRoutesResults);
+        if (count($allowed) > 0) {
+            throw new MethodNotAllowedException($allowed);
+        }
+        throw new ResourceNotFoundException();
+    }
+
+    private function findAllowedMethodsInFailingMethodChecks(array $allRoutesResults) {
+        $allowed = array();
+        // TODO: Optimize this with hashes
+        foreach ($allRoutesResults as $routeResult) {
+            foreach ($routeResult->getInnerValidationResults() as $innerResult) {
+                if ($innerResult instanceOf HttpMethodValidationResult && !$innerResult->isValid()) {
+                    $allowed = array_merge($allowed, $innerResult->getAllowedMethods());
+                }
+            }
+        }
+        return $allowed;
+    }
+
+    private function buildMatchingRouteAttributes(RouteValidationResult $result) {
+        $innerCheckResults = $result->getInnerValidationResults();
+        $regExpMatches = $this->findRegExpMatches($innerCheckResults);
+        $hostMatches   = $this->findHostMatches($innerCheckResults);
+        $attributes = $this->getAttributes(
+            $result->getRoute(), 
+            $result->getRouteName(), 
+            array_replace(
+                $regExpMatches, 
+                $hostMatches
+            )
+        );
+        return $attributes;
+    }
+
+
+    private function findRegExpMatches(array $results) {
+        // TODO: Optimize this with hashes
+        foreach ($results as $result) {
+            if ($result instanceOf RegExpValidationResult) {
+                return $result->getMatches();
+            }
+        }
+        return array();
+    }
+    
+    private function findHostMatches(array $results) {
+        // TODO: Optimize this with hashes
+        foreach ($results as $result) {
+            if ($result instanceOf HostValidationResult) {
+                return $result->getHosts();
+            }
+        }
+        return array();
     }
 
     private function matchRoute($path, $routeName, Route $route) {
-        $results    = array();
+        $matchersResults    = array();
      
-        // Requirements stuff
-        $validators = array( 
+        // Matchers
+        $matchers = array( 
             new RegExpRequirementMatcher(),
             new HostRequirementMatcher(),
             new SchemaRequirementMatcher(),
@@ -184,22 +232,42 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
             new MethodRequirementMatcher()
         );
 
-        foreach ($validators as $validator) {
+        foreach ($matchers as $matcher) {
             $context    = $this->buildRequirementContext(
                 $path, 
                 $routeName, 
                 $route
             );
-            $result     = $validator->match($context);
-            $results[]  = $result;    
+            $matchersResult     = $matcher->match($context);
+            $matchersResults[]  = $matchersResult;
         }
 
-        foreach ($results as $result) {
-            if (!$result->isValid()) {
-                return new RouteValidationResult(ValidationResult::KO, $route, $results);
+        $routeMatchingResult = $this->processRouteMatchersResults(
+            $route, 
+            $routeName, 
+            $matchersResults
+        );
+        return $routeMatchingResult;
+    }
+
+    private function processRouteMatchersResults(Route $route, $routeName, array $matchersResults) {
+        // TODO: Make evaluation of checks pluggable as the matchers
+        foreach ($matchersResults as $matcherResult) {
+            if (!$matcherResult->isValid()) {
+                return new RouteValidationResult(
+                    ValidationResult::KO, 
+                    $routeName, 
+                    $route, 
+                    $matchersResults
+                );
             }
         }
-        return new RouteValidationResult(ValidationResult::OK, $route, $results);
+        return new RouteValidationResult(
+            ValidationResult::OK, 
+            $routeName, 
+            $route, 
+            $matchersResults
+        );
     }
 
     private function buildRequirementContext($path, $routeName, Route $route) {
@@ -233,45 +301,6 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
     }
 
     /**
-     * Handles specific route requirements.
-     *
-     * @param string $pathinfo The path
-     * @param string $name     The route name
-     * @param Route  $route    The route
-     *
-     * @return array The first element represents the status, the second contains additional information
-     */
-    protected function handleRouteRequirements($pathinfo, $name, Route $route)
-    {
-        // check HTTP method requirement
-        if ($req = $route->getRequirement('_method')) {
-            // HEAD and GET are equivalent as per RFC
-            if ('HEAD' === $method = $this->context->getMethod()) {
-                $method = 'GET';
-            }
-
-            if (!in_array($method, $req = explode('|', strtoupper($req)))) {
-                $this->allow = array_merge($this->allow, $req);
-
-                return array(self::REQUIREMENT_MISMATCH, null);
-            }
-        }
-            
-        // expression condition
-        if ($route->getCondition() && !$this->getExpressionLanguage()->evaluate($route->getCondition(), array('context' => $this->context, 'request' => $this->request))) {
-            return array(self::REQUIREMENT_MISMATCH, null);
-        }
-
-        // check HTTP scheme requirement
-        $scheme = $route->getRequirement('_scheme');
-        if ($scheme && $scheme !== $this->context->getScheme()) {
-            return array(self::REQUIREMENT_MISMATCH, null);
-        }
-
-        return array(self::REQUIREMENT_MATCH, null);
-    }
-
-    /**
      * Get merged default parameters.
      *
      * @param array $params   The parameters
@@ -288,17 +317,5 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
         }
 
         return $defaults;
-    }
-
-    protected function getExpressionLanguage()
-    {
-        if (null === $this->expressionLanguage) {
-            if (!class_exists('Symfony\Component\ExpressionLanguage\ExpressionLanguage')) {
-                throw new RuntimeException('Unable to use expressions as the Symfony ExpressionLanguage component is not installed.');
-            }
-            $this->expressionLanguage = new ExpressionLanguage();
-        }
-
-        return $this->expressionLanguage;
     }
 }

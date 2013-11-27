@@ -4,7 +4,9 @@ namespace Symfony\Component\Routing\Matcher\Requirements;
 // TODO: Rename this to SuccessValidationResult
 
 class RegExpValidationResult extends ValidationResult {
-	public function __construct($isValid, $matches = array(), $results = NULL) {
+	protected $matches = array();
+	
+	public function __construct($isValid, $matches = array(), $results = array()) {
 		parent::__construct($isValid, $results);
 		$this->matches = $matches;
 	}
