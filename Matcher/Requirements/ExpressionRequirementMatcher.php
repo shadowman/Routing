@@ -5,8 +5,7 @@ namespace Symfony\Component\Routing\Matcher\Requirements;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Matcher\Requirements\RequirementMatcherInterface;
-use Symfony\Component\Routing\Matcher\Requirements\KoValidationResult;
-use Symfony\Component\Routing\Matcher\Requirements\OkValidationResult;
+use Symfony\Component\Routing\Matcher\Requirements\ValidationResult;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
@@ -44,18 +43,24 @@ class ExpressionRequirementMatcher  implements RequirementMatcherInterface {
 				'request' => $context->getRequest()
 			);
 			
-			 $expression = $this->buildExpressionEvaluator();
-			 $result = $expression->evaluate(
+			$expression = $this->buildExpressionEvaluator();
+			$evaluationIsTrue = $expression->evaluate(
 				$route->getCondition(), 
 				$variables
 			);
 			
-			if (!$result) {
-            	return new KoValidationResult();
+			if (!$evaluationIsTrue) {
+            	return new ConditionValidationResult(
+            		ValidationResult::KO, 
+            		$route->getCondition()
+            	);
 			}
         }
 
-		return new OkValidationResult();
+		return new ConditionValidationResult(
+    		ValidationResult::OK, 
+    		$route->getCondition()
+    	);
 	}
 
 

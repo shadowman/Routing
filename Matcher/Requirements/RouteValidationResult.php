@@ -1,7 +1,6 @@
 <?php
 
 namespace Symfony\Component\Routing\Matcher\Requirements;
-// TODO: Rename this to SuccessValidationResult
 
 class RouteValidationResult extends ValidationResult {
 	protected $route;

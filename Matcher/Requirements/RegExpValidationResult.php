@@ -1,7 +1,6 @@
 <?php
 
 namespace Symfony\Component\Routing\Matcher\Requirements;
-// TODO: Rename this to SuccessValidationResult
 
 class RegExpValidationResult extends ValidationResult {
 	protected $matches = array();
