@@ -31,6 +31,7 @@ use Symfony\Component\Routing\Matcher\Requirements\HttpMethodValidationResult;
 use Symfony\Component\Routing\Matcher\Requirements\RouteValidationContext;
 use Symfony\Component\Routing\Matcher\Requirements\RouteValidationHandler;
 use Symfony\Component\Routing\Matcher\Requirements\RouteCollectionValidationHandler;
+use Symfony\Component\Routing\Matcher\Requirements\RouteCollectionAttributesExtractorHandler;
 use Symfony\Component\Routing\Matcher\Requirements\RouteCollectionHandlerContext;
 
 
@@ -73,6 +74,7 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
     {
         $this->routes = $routes;
         $this->context = $context;
+        
         // Matchers
         $this->matchers = array( 
             new RegExpRequirementMatcher(),
@@ -82,11 +84,13 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
             new MethodRequirementMatcher()
         );
 
-        $this->routeValidationHandlers = array(
+        $this->routeHandlers = array(
             new RouteValidationHandler()
         );
-        $this->routeCollectionValidationHandlers = array(
-            new RouteCollectionValidationHandler()
+
+        $this->routeCollectionHandlers = array(
+            new RouteCollectionValidationHandler(),
+            new RouteCollectionAttributesExtractorHandler()
         );
     }
 
@@ -155,15 +159,12 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
         }
 
         $handlerResult = $this->handleRouteCollectionValidation($allResults);
-
-        $matchingRouteAttributes = $this->extractRouteAttributesFromResults($handlerResult);
-
-        return $matchingRouteAttributes;
+        return $handlerResult;        
     }
 
     protected function handleRouteCollectionValidation(array $allRoutesResults) {
         $handlerResult = NULL;
-        foreach ($this->routeCollectionValidationHandlers as $handler) {
+        foreach ($this->routeCollectionHandlers as $handler) {
             $handlerResult = $handler->handle(
                 new RouteCollectionHandlerContext($allRoutesResults)
             );
@@ -174,52 +175,6 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
         return $handlerResult;
     }
     
-    private function extractRouteAttributesFromResults($handlerResult) {
-        $attributes         = array();
-        if ($handlerResult != NULL && $handlerResult->isValid()) {
-            $attributes = $this->buildMatchingRouteAttributes(
-                $handlerResult
-            );
-        }
-        return $attributes;
-    }
-
-    private function buildMatchingRouteAttributes(RouteValidationResult $result) {
-        $innerCheckResults = $result->getInnerValidationResults();
-        $regExpMatches = $this->findRegExpMatches($innerCheckResults);
-        $hostMatches   = $this->findHostMatches($innerCheckResults);
-        $attributes = $this->getAttributes(
-            $result->getRoute(), 
-            $result->getRouteName(), 
-            array_replace(
-                $regExpMatches, 
-                $hostMatches
-            )
-        );
-        return $attributes;
-    }
-
-
-    private function findRegExpMatches(array $results) {
-        // TODO: Optimize this with hashes
-        foreach ($results as $result) {
-            if ($result instanceOf RegExpValidationResult) {
-                return $result->getMatches();
-            }
-        }
-        return array();
-    }
-    
-    private function findHostMatches(array $results) {
-        // TODO: Optimize this with hashes
-        foreach ($results as $result) {
-            if ($result instanceOf HostValidationResult) {
-                return $result->getHosts();
-            }
-        }
-        return array();
-    }
-
     private function applyRequirementMatchers($path, $routeName, Route $route) {
         $matchersResults    = array();
      
@@ -254,7 +209,7 @@ class UrlMatcher implements UrlMatcherInterface, RequestMatcherInterface
 
     private function handleRouteValidation(Route $route, $routeName, $matchersResults) {
         $handlerResult = NULL;
-        foreach($this->routeValidationHandlers as $handler) {
+        foreach($this->routeHandlers as $handler) {
             
             $handlerResult = $routeValidationHandlerResult = $handler->handle(
                 new RouteValidationContext(

@@ -19,7 +19,6 @@ class RouteCollectionValidationHandler implements RouteCollectionHandlerInterfac
 	        }
 	        throw new ResourceNotFoundException();
         }
-        return $lastRouteResult;
 	}
 
     private function findAllowedMethodsInFailingMethodChecks(array $allRoutesResults) {
